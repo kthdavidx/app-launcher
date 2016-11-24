@@ -158,24 +158,67 @@ let app = new Vue({
     }, 1000, { 'trailing': false }),
 
     getAllApps : function() {
-      let self = this;
-      self.appCategories.forEach(function(v,k) {
-        self.allApps = self.allApps.concat(v.apps);
-      });
+      if(this.searchInput == "") {
+        let self = this;
+        self.appCategories.forEach(function(v,k) {
+          self.allApps = self.allApps.concat(v.apps);
+        });
+      }
       console.log(self.allApps);
     },
     clearAllApps : function() {
       this.allApps=[];
     },
-    delete: function(list, index, ev) {
+    appHandleKeyEvent: function(list, index, ev) {
       keys[ev.keyCode] = true;
-      if(keys[17]&&keys[46]) {
+      if(keys[18]&&keys[73]) { //alt+i - change app icon
+        let file = document.createElement("INPUT");
+        file.setAttribute("type", "file");
+        file.setAttribute("accept","image/*");
+        file.click();
+        file.onchange = function(ev) {
+          list[index].imagePath = this.files[0].path;
+        }
+        keys = [];
+      }
+
+      if(keys[17]&&keys[46]) { //ctr+del delete
         list.splice(index,1);
         keys = [];
       }
     },
     resetKeys: function() {
       keys = [];
+    },
+    openFileDialog : function(list,ind) {
+      let files = document.createElement("INPUT");
+      files.setAttribute("type", "file");
+      //files.setAttribute("accept","application/octet-stream");
+      files.setAttribute("multiple", true);
+      files.click();
+      files.onchange = function(ev) {
+        let l = this.files.length;
+        for(let i=0; i<l; i++) {
+          let app = {
+            imagePath:this.files[i].path,
+            appName:this.files[i].name,
+            appPath:this.files[i].path
+          };
+          list[ind].apps.push(app);
+        }
+        console.log(this.files);
+      }
+    },
+    handleKeyEvent: function(list, index, ev) {
+      keys[ev.keyCode] = true;
+      if(keys[18]&&keys[65]) { //alt+a - add application
+        this.openFileDialog(list,index);
+        keys = [];
+      }
+      if(keys[17]&&keys[46]) { //ctr+del - delete
+        list.splice(index,1);
+        keys = [];
+      }
     }
   },
   computed : {

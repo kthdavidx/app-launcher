@@ -23,14 +23,14 @@
         <div class="left-nav" draggable="false">
           <ul class="categories" draggable="false">
             <li v-for="(category,index) in appCategories" @click="setSelectedCat(category)" v-bind:class="{'active': category.categoryName == selectedCat.categoryName}"
-            v-drag-n-sort="{group:'categories',index:index,list:appCategories,exclude:0}" >
+            v-drag-n-sort="{group:'categories',index:index,list:appCategories,exclude:0}" tabindex="1" @keydown="handleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
               {{category.categoryName}}
             </li>
           </ul>
         </div>
         <div class="contents unselectable" draggable="false">
           <div class="wrapper" v-bind:style="scrollStyle" v-for="category in appCategories" v-if="selectedCat.categoryName == category.categoryName" draggable="false">
-            <div class="app-container" tabindex="1" v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="delete(category.apps,index, $event)" @keyUp="resetKeys">
+            <div class="app-container" tabindex="1" v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
               <div class="img-container" draggable="false">
                 <img v-bind:src="app.imagePath" alt="" / draggable="false">
               </div>
