@@ -9,7 +9,7 @@
 
   </head>
   <body>
-    <div class="container" id="app">
+    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keydown="resetKeys" tabindex="0" autofocus>
       <div class="top">
 
       </div>
@@ -23,26 +23,26 @@
         <div class="left-nav" draggable="false">
           <ul class="categories" draggable="false">
             <li v-for="(category,index) in appCategories" @click="setSelectedCat(category)" v-bind:class="{'active': category.categoryName == selectedCat.categoryName}"
-            v-drag-n-sort="{group:'categories',index:index,list:appCategories,exclude:0}" tabindex="1" @keydown="handleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
+            v-drag-n-sort="{group:'categories',index:index,list:appCategories,exclude:0}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
               {{category.categoryName}}
             </li>
           </ul>
         </div>
         <div class="contents unselectable" draggable="false">
           <div class="wrapper" v-bind:style="scrollStyle" v-for="category in appCategories" v-if="selectedCat.categoryName == category.categoryName" draggable="false">
-            <div class="app-container" tabindex="1" v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
+            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
               <div class="img-container" draggable="false">
                 <img v-bind:src="app.imagePath" alt="" / draggable="false">
               </div>
               <div class="app-name" draggable="false">
-                <div draggable="false">
+                <div draggable="false" contenteditable="true">
                   {{app.appName}}
                 </div>
               </div>
             </div>
           </div>
           <div class="wrapper" v-bind:style="scrollStyle" v-if="searchInput">
-            <div class="app-container" tabindex="1" v-for="app in filterSearch">
+            <div class="app-container" tabindex="-1" v-for="app in filterSearch" @keydown="searchHandleKeyEvent(app, $event)" @keyUp="resetKeys">
               <div class="img-container">
                 <img v-bind:src="app.imagePath" alt="" />
               </div>
@@ -59,6 +59,7 @@
       </div>
       <footer></footer>
     </div>
+    <script src="directives/dragNsort.js" charset="utf-8"></script>
     <script src="app.js" charset="utf-8"></script>
   </body>
 </html>

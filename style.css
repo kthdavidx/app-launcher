@@ -138,10 +138,12 @@ footer {
 .app-container:hover .app-name {
   outline: #054d63 solid 4px;
   background: rgba(0, 0, 0, 0.2);
+  z-index: 4;
 }
 .app-container:focus .app-name {
   outline: #054d63 solid 4px;
   background: rgba(0, 0, 0, 0.5);
+  z-index: 4;
 }
 .app-container:hover .app-name div,
 .app-container:focus .app-name div {
@@ -149,7 +151,11 @@ footer {
 }
 .app-container:hover .img-container img,
 .app-container:focus .img-container img{
-
+  z-index: 5;
+}
+.app-container:hover .img-container,
+.app-container:focus .img-container {
+  z-index: 6;
 }
 .img-container {
   width: 100%;
@@ -185,6 +191,7 @@ footer {
   /*background: rgba(0, 0, 0, 0.5);*/
   overflow: hidden;
 }
+
 .unselectable {
   user-drag: none;
   user-select: none;

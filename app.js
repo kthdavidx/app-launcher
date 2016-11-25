@@ -76,52 +76,9 @@ let appCategories = [
     ]
   }
 ];
-
 let scrollDist = 400;
 let keys = [];
-Vue.directive('drag-n-sort', {
-  bind : function(el, binding) {
 
-    let setDragNsort = function() {
-      el.ondrop = function(ev) {
-        let group = ev.dataTransfer.getData("group");
-        console.log(group);
-        if(binding.value.group == group) {
-          ev.preventDefault();
-          let dropIndex = ev.dataTransfer.getData("text");
-          let selfIndex = this.dataset.index;
-          let copy = binding.value.list[dropIndex];
-          binding.value.list.splice(dropIndex,1);
-          binding.value.list.splice(selfIndex,0,copy);
-        }
-      }
-      el.ondragover = function(ev) {
-        ev.preventDefault();
-      }
-      el.ondragstart = function(ev) {
-          let index = ev.target.getAttribute("data-index");
-          ev.dataTransfer.setData("text", index);
-          ev.dataTransfer.setData("group", binding.value.group);
-      }
-      el.setAttribute("draggable", "true");
-    }
-
-    el.setAttribute("data-index", binding.value.index);
-    if(binding.value.hasOwnProperty("exclude")) {
-      if(el.dataset.index != binding.value.exclude) {
-        setDragNsort();
-      } else {
-        el.setAttribute('draggable', 'false');
-        el.ondrop = function(ev) {
-          return false;
-        }
-      }
-    } else {
-      setDragNsort();
-    }
-
-  }
-});
 let app = new Vue({
   el:'#app',
   data:{
@@ -158,14 +115,45 @@ let app = new Vue({
     }, 1000, { 'trailing': false }),
 
     getAllApps : function() {
-      if(this.searchInput == "") {
-        let self = this;
-        self.appCategories.forEach(function(v,k) {
-          self.allApps = self.allApps.concat(v.apps);
-        });
+      if(this.allApps.length === 0) {
+        let catLen = this.appCategories.length;
+        for(let y=0;y<catLen;y++) {
+          let appLen = this.appCategories[y].apps.length;
+          let copyAr = this.appCategories[y].apps.slice(0);
+          for(let x=0;x<appLen;x++) {
+            copyAr[x].catIndex = y;
+            copyAr[x].appIndex = x;
+          }
+          this.allApps = this.allApps.concat(copyAr);
+        }
       }
-      console.log(self.allApps);
+      console.log(this.allApps);
     },
+    searchHandleKeyEvent: function(app, ev) {
+      keys[ev.keyCode] = true;
+      if(keys[17]&&keys[46]) { //ctr+del delete
+        this.appCategories[app.catIndex].apps.splice(app.appIndex,1);
+        this.allApps = [];
+        this.getAllApps();
+        keys = [];
+      }
+
+      if(keys[18]&&keys[73]) { //alt+i - change app icon
+        let self = this;
+        let file = document.createElement("INPUT");
+        file.setAttribute("type", "file");
+        file.setAttribute("accept","image/*");
+        file.click();
+        file.onchange = function(ev) {
+          self.appCategories[app.catIndex].apps[app.appIndex].imagePath = this.files[0].path;
+          self.allApps = [];
+          self.getAllApps();
+        }
+        keys = [];
+      }
+
+    },
+
     clearAllApps : function() {
       this.allApps=[];
     },
@@ -204,12 +192,12 @@ let app = new Vue({
             appName:this.files[i].name,
             appPath:this.files[i].path
           };
-          list[ind].apps.push(app);
+          list[ind].apps.unshift(app);
         }
         console.log(this.files);
       }
     },
-    handleKeyEvent: function(list, index, ev) {
+    catHandleKeyEvent: function(list, index, ev) {
       keys[ev.keyCode] = true;
       if(keys[18]&&keys[65]) { //alt+a - add application
         this.openFileDialog(list,index);
@@ -219,15 +207,27 @@ let app = new Vue({
         list.splice(index,1);
         keys = [];
       }
+    },
+    mainHandleKeyEvent: function(ev) {
+      keys[ev.keyCode] = true;
+      if(keys[18]&&keys[67]) { //alt+c - add category
+        this.appCategories.push({
+          categoryName:'New category',
+          apps:[]
+        });
+        this.selectedCat = this.appCategories[this.appCategories.length-1];
+        keys = [];
+      }
     }
   },
   computed : {
     filterSearch: function() {
+      let allApps = this.allApps;
       let ar = [];
-      let l = this.allApps.length;
+      let l = allApps.length;
       for(let i=0;i<l;i++) {
-        if(this.allApps[i].appName.toLowerCase().search(this.searchInput.toLowerCase()) !== -1) {
-          ar.push(this.allApps[i]);
+        if(allApps[i].appName.toLowerCase().search(this.searchInput.toLowerCase()) !== -1) {
+          ar.push(allApps[i]);
         }
       }
       return ar;
