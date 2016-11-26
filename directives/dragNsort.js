@@ -1,6 +1,5 @@
 Vue.directive('drag-n-sort', {
   bind : function(el, binding) {
-    
     let setDragNsort = function() {
       el.ondrop = function(ev) {
         let group = ev.dataTransfer.getData("group");
@@ -18,11 +17,11 @@ Vue.directive('drag-n-sort', {
         ev.preventDefault();
       }
       el.ondragstart = function(ev) {
-          let index = ev.target.getAttribute("data-index");
-          ev.dataTransfer.setData("text", index);
-          ev.dataTransfer.setData("group", binding.value.group);
+        let index = ev.target.getAttribute("data-index");
+        ev.dataTransfer.setData("text", index);
+        ev.dataTransfer.setData("group", binding.value.group);
       }
-      el.setAttribute("draggable", "true");
+      //el.setAttribute("draggable", "true");
     }
 
     el.setAttribute("data-index", binding.value.index);

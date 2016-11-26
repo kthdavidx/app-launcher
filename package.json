@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "icon-extractor": "^1.0.3",
     "lodash": "^4.17.2",
     "sortablejs": "^1.5.0-rc1"
   }

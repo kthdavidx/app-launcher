@@ -1,4 +1,8 @@
 var _ = require('lodash');
+const {remote} = require('electron');
+const main = remote.require("./main.js");
+
+let iconExtractor = require('icon-extractor');
 let appCategories = [
   {
     categoryName:"All apps",
@@ -78,7 +82,6 @@ let appCategories = [
 ];
 let scrollDist = 400;
 let keys = [];
-
 let app = new Vue({
   el:'#app',
   data:{
@@ -87,7 +90,10 @@ let app = new Vue({
     selectedApp : {},
     scrollStyle: {marginTop:"0px"},
     searchInput: "",
-    allApps : []
+    allApps : [],
+    isInputPass: false,
+    isEdit : false,
+    password:""
   },
   methods: {
     setSelectedCat: function(category) {
@@ -187,12 +193,18 @@ let app = new Vue({
       files.onchange = function(ev) {
         let l = this.files.length;
         for(let i=0; i<l; i++) {
+          let name = this.files[i].name;
+          let index = name.lastIndexOf(".");
+          if(index !== -1) {
+            name = this.files[i].name.slice(0, index);
+          }
           let app = {
-            imagePath:this.files[i].path,
-            appName:this.files[i].name,
+            imagePath:"images/CrossFireIcon.ico",
+            appName:name,
             appPath:this.files[i].path
           };
           list[ind].apps.unshift(app);
+          //iconExtractor.getIcon(name,this.files[i].path);
         }
         console.log(this.files);
       }
@@ -218,6 +230,24 @@ let app = new Vue({
         this.selectedCat = this.appCategories[this.appCategories.length-1];
         keys = [];
       }
+      if(keys[17]&&keys[16]&&keys[69]) {
+        this.isInputPass = !this.isInputPass;
+      }
+    },
+    setPassword: function() {
+      main.showSetPassword();
+    },
+    enterEditMode: function() {
+      let pass = localStorage.getItem("password");
+      if (pass === this.password) {
+        alert("Edit Mode Activated!")
+        this.isEdit = true;
+      }
+    },
+    updateAppName: function(app,ev) {
+      app.appName = ev.currentTarget.innerText;
+      ev.currentTarget.parentNode.parentNode.focus();
+      return false;
     }
   },
   computed : {
@@ -234,3 +264,21 @@ let app = new Vue({
     }
   }
 });
+
+(function() {
+  var count = 0;
+  var lastIconNum = 1;
+  iconExtractor.emitter.on('icon', function(data) {
+    count++;
+    console.log(count);
+    if (count == lastIconNum) {
+      app.selectedCat.apps.unshift({
+        imagePath:"data:image/png;base64,"+data.Base64ImageData,
+        appName:data.Context,
+        appPath:data.Path,
+      });
+      lastIconNum++;
+      count = 0;
+    }
+  });
+})();

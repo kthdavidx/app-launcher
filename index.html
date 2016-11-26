@@ -9,7 +9,10 @@
 
   </head>
   <body>
-    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keydown="resetKeys" tabindex="0" autofocus>
+    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keyup="resetKeys" tabindex="0" autofocus>
+      <div class="password" v-if="isInputPass">
+        <input type="password" placeholder="password" @focusout="isInputPass=!isInputPass" @keyUp.enter="enterEditMode" v-model="password" v-focus-on-display>
+      </div>
       <div class="top">
 
       </div>
@@ -22,22 +25,23 @@
       <div class="mid-section unselectable" draggable="false">
         <div class="left-nav" draggable="false">
           <ul class="categories" draggable="false">
-            <li v-for="(category,index) in appCategories" @click="setSelectedCat(category)" v-bind:class="{'active': category.categoryName == selectedCat.categoryName}"
-            v-drag-n-sort="{group:'categories',index:index,list:appCategories,exclude:0}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
+            <li v-for="(category,index) in appCategories" @click="setSelectedCat(category)" v-bind:class="{'active': category.categoryName == selectedCat.categoryName}" v-bind:draggable="isEdit"
+            v-drag-n-sort="{group:'categories',index:index,list:appCategories}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
               {{category.categoryName}}
             </li>
           </ul>
         </div>
         <div class="contents unselectable" draggable="false">
           <div class="wrapper" v-bind:style="scrollStyle" v-for="category in appCategories" v-if="selectedCat.categoryName == category.categoryName" draggable="false">
-            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
+            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-bind:draggable="isEdit"
+            v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
               <div class="img-container" draggable="false">
-                <img v-bind:src="app.imagePath" alt="" / draggable="false">
+                <img v-bind:src="app.imagePath" alt="" draggable="false">
               </div>
               <div class="app-name" draggable="false">
-                <div draggable="false" contenteditable="true">
+                <p draggable="false" v-bind:contenteditable="isEdit" @keydown.enter="updateAppName(app, $event)">
                   {{app.appName}}
-                </div>
+                </p>
               </div>
             </div>
           </div>
@@ -57,9 +61,16 @@
           <div class="page-up" @click="pageUp" @dragenter="scrollUp"><i class="fa fa-angle-double-up fa-lg" aria-hidden="true"></i></div>
         </div>
       </div>
+      <div class="set-password">
+
+      </div>
+      <div class="enter-password">
+
+      </div>
       <footer></footer>
     </div>
     <script src="directives/dragNsort.js" charset="utf-8"></script>
-    <script src="app.js" charset="utf-8"></script>
+    <script src="directives/focus-on-display.js" charset="utf-8"></script>
+    <script>require("./app.js")</script>
   </body>
 </html>
