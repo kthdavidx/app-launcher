@@ -1,10 +1,18 @@
-
+body {
+  width: 1000px;
+  height: 600px;
+  padding: 0px;
+  margin: 0 auto;
+  position: fixed;
+  font-family: Arial;
+}
 .container {
   position: relative;
   width: 1000px;
   height: 600px;
   background-image: url("images/dark.jpg");
-  background-size: contain;
+  background-size:cover;
+  background-position: center;
   margin: 0 auto;
   outline:none;
   text-decoration: none;
@@ -70,6 +78,17 @@ footer {
   height: 400px;
   background: rgba(0, 0, 0, 0.5);
 }
+.cat-container {
+  margin: 20px 0;
+  padding: 0;
+  height: 360px;
+  overflow-y: scroll;
+}
+.cat-wrap {
+  margin-top: 0px;
+  transition: margin-top 0.5s;
+
+}
 .categories {
   list-style: none;
   padding: 0;
@@ -78,21 +97,25 @@ footer {
 .categories li {
   /*border-top: 1px solid black;
   border-bottom: 1px solid black;*/
+  height: 60px;
+  box-sizing: border-box;
   font-family: Arial;
   padding: 20px;
   color: white;
   text-align: center;
-  margin: 5px 0;
   transition: background 0.3s ease-out;
+  outline: none;
 }
 .categories li:hover {
   font-weight: bold;
   background: #081f2d;
   cursor: pointer;
+  outline: none;
 }
 .categories .active {
   font-weight: bold;
-  background: #081f2d;
+  background: #113449;
+  outline: none;
 }
 .contents {
   position: relative;
@@ -132,25 +155,31 @@ footer {
   width: 100px;
   margin: 5px 10px 70px 10px;
 }
-/*.app-container:hover {
-  outline: #054d63 solid 4px;
-}*/
+.app-container:focus {
+  outline: none;
+}
 .app-container:hover .app-name {
   outline: #054d63 solid 4px;
   background: rgba(0, 0, 0, 0.2);
   z-index: 4;
 }
-.app-container:focus .app-name {
+.focus:hover .app-name {
   outline: #054d63 solid 4px;
   background: rgba(0, 0, 0, 0.5);
   z-index: 4;
 }
-.app-container:hover .app-name div,
-.app-container:focus .app-name div {
-  height: auto;
+/*app-container*/
+.focus .app-name {
+  outline: #054d63 solid 4px;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 4;
 }
+/*.app-container:hover .app-name div,
+.focus .app-name div {
+  height: auto;
+}*/
 .app-container:hover .app-name p,
-.app-container:focus .app-name p {
+.focus .app-name p {
   -webkit-line-clamp: none;
   text-overflow: none;
   overflow: visible;
@@ -158,11 +187,11 @@ footer {
   -webkit-box-orient:none;
 }
 .app-container:hover .img-container img,
-.app-container:focus .img-container img{
+.focus .img-container img{
   z-index: 5;
 }
 .app-container:hover .img-container,
-.app-container:focus .img-container {
+.focus .img-container {
   z-index: 6;
 }
 .img-container {
@@ -179,10 +208,25 @@ footer {
   height: 100%;
   z-index: 2;
 }
+.app-text {
+  position: absolute;
+  top:125px;
+  left:-2px;
+  width: 100px;
+  resize: none;
+  text-align: center;
+  min-height: 5px;
+  z-index:7;
+}
+.edit {
+  outline: #054d63 solid 4px;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 4;
+}
 .app-name {
   position: absolute;
   top:-1px;
-  left:-1;
+  left:0px;
   width: 101px;
 }
 .app-name p {
@@ -197,6 +241,13 @@ footer {
   font-family: Arial;
   font-size: 0.8em;
   word-wrap: break-word;
+}
+.edit p {
+  -webkit-line-clamp: none;
+  text-overflow: none;
+  overflow: visible;
+  display: block;
+  -webkit-box-orient:none;
 }
 .app-name div{
   margin-top: 130px;
@@ -270,4 +321,8 @@ display: none;
 }
 .password input:focus {
   outline-color: green;
+}
+li:empty {
+    display: block;
+    height: 1em;
 }

@@ -20,6 +20,8 @@ Vue.directive('drag-n-sort', {
         let index = ev.target.getAttribute("data-index");
         ev.dataTransfer.setData("text", index);
         ev.dataTransfer.setData("group", binding.value.group);
+        ev.target.setAttribute("contenteditable", "false");
+        ev.currentTarget.focus();
       }
       //el.setAttribute("draggable", "true");
     }

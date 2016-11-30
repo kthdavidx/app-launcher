@@ -5,13 +5,13 @@
     <title></title>
     <link rel="stylesheet" href="font-awesome/css/font-awesome.css" media="screen" title="no title">
     <link rel="stylesheet" href="style.css" media="screen" title="no title">
+    <script src="autosize.js"></script>
     <script src="vue.js" charset="utf-8"></script>
-
   </head>
   <body>
-    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keyup="resetKeys" tabindex="0" autofocus>
+    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keyup="resetKeys" tabindex="0" v-if="appCategories" @click="resetData" autofocus>
       <div class="password" v-if="isInputPass">
-        <input type="password" placeholder="password" @focusout="isInputPass=!isInputPass" @keyUp.enter="enterEditMode" v-model="password" v-focus-on-display>
+        <input type="password" placeholder="password" @focusout="toggleInputPass" @keydown.enter="enterEditMode" v-model="password" v-focus-on-display>
       </div>
       <div class="top">
 
@@ -24,51 +24,53 @@
       </div>
       <div class="mid-section unselectable" draggable="false">
         <div class="left-nav" draggable="false">
-          <ul class="categories" draggable="false">
-            <li v-for="(category,index) in appCategories" @click="setSelectedCat(category)" v-bind:class="{'active': category.categoryName == selectedCat.categoryName}" v-bind:draggable="isEdit"
-            v-drag-n-sort="{group:'categories',index:index,list:appCategories}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyUp="resetKeys">
-              {{category.categoryName}}
-            </li>
-          </ul>
+          <div class="cat-container">
+            <div class="cat-wrap">
+              <ul class="categories" draggable="false" @drop="setCatIndex(catIndex,'reset')">
+                <li v-for="(category,index) in appCategories" @click="setCatIndex(index, $event)" v-bind:class="{'active': catIndex == index}" v-bind:draggable="isEdit"
+                v-drag-n-sort="{group:'categories',index:index,list:appCategories}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyup="resetKeys($event)" @focusout="updateCatName(category,$event)"><!---->
+                  {{category.categoryName}}
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
         <div class="contents unselectable" draggable="false">
-          <div class="wrapper" v-bind:style="scrollStyle" v-for="category in appCategories" v-if="selectedCat.categoryName == category.categoryName" draggable="false">
-            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-bind:draggable="isEdit"
-            v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyUp="resetKeys">
+          <div class="wrapper" v-bind:style="scrollStyle" v-for="(category,index) in appCategories" v-if="catIndex == index" draggable="false">
+            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-bind:draggable="isEdit" @dblclick="openApp(app)" @click="setAppIndex(index,$event)"
+            v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyup="resetKeys" v-bind:class="{'focus':appIndex==index}">
               <div class="img-container" draggable="false">
                 <img v-bind:src="app.imagePath" alt="" draggable="false">
               </div>
-              <div class="app-name" draggable="false">
-                <p draggable="false" v-bind:contenteditable="isEdit" @keydown.enter="updateAppName(app, $event)">
+              <div class="app-name" draggable="false" v-show="!isEdit||!isEditAppName||appIndex != index">
+                <p draggable="false" @click.self="isEditAppName = isEdit ? true:false" @focus="setActive">
                   {{app.appName}}
                 </p>
               </div>
+              <textarea class="app-text" rows="1" v-model="app.appName" v-add-autosize v-if="isEdit&&isEditAppName&&appIndex == index" @keydown="appUpdateEnter" @focusout="updateAppName"></textarea>
             </div>
           </div>
-          <div class="wrapper" v-bind:style="scrollStyle" v-if="searchInput">
-            <div class="app-container" tabindex="-1" v-for="app in filterSearch" @keydown="searchHandleKeyEvent(app, $event)" @keyUp="resetKeys">
+          <div class="wrapper" v-bind:style="scrollStyle" v-if="searchInput" tabindex="-1" @>
+            <div class="app-container" tabindex="-1" v-for="(app,index) in filterSearch" @keydown="searchHandleKeyEvent(app, $event)"
+             @keyup="resetKeys" v-bind:class="{'focus':appIndex==index}" @click="setAppIndex(index,$event)" @dblclick="openApp(app)">
               <div class="img-container">
                 <img v-bind:src="app.imagePath" alt="" />
               </div>
-              <div class="app-name">
-                <div>
+              <div class="app-name" draggable="false" v-show="!isEdit||!isEditAppName||appIndex != index">
+                <p @click.self="isEditAppName = isEdit ? true:false" @focus="setActive">
                   {{app.appName}}
-                </div>
+                </p>
               </div>
+              <textarea class="app-text" rows="1" v-add-autosize v-if="isEdit&&isEditAppName&&appIndex == index" @keydown="srchAppUpdate(app,$event)" @focusout="srchAppUpdate(app,$event)">{{app.appName}}</textarea>
             </div>
           </div>
-          <div class="page-down" @click="pageDown" @dragenter="scrollDown"><i class="fa fa-angle-double-down fa-lg" aria-hidden="true"></i></div>
-          <div class="page-up" @click="pageUp" @dragenter="scrollUp"><i class="fa fa-angle-double-up fa-lg" aria-hidden="true"></i></div>
+          <div class="page-down" @click="pageDown" @dragenter="scrollDown" v-if="isShowPageDown"><i class="fa fa-angle-double-down fa-lg" aria-hidden="true"></i></div>
+          <div class="page-up" @click="pageUp" @dragenter="scrollUp" v-if="isShowPageUp"><i class="fa fa-angle-double-up fa-lg" aria-hidden="true"></i></div>
         </div>
-      </div>
-      <div class="set-password">
-
-      </div>
-      <div class="enter-password">
-
       </div>
       <footer></footer>
     </div>
+
     <script src="directives/dragNsort.js" charset="utf-8"></script>
     <script src="directives/focus-on-display.js" charset="utf-8"></script>
     <script>require("./app.js")</script>
