@@ -1,5 +1,5 @@
-Vue.directive('drag-n-sort', {
-  bind : function(el, binding) {
+Vue.directive('drag-n-sort',
+  function(el, binding) {
     let setDragNsort = function() {
       el.ondrop = function(ev) {
         let group = ev.dataTransfer.getData("group");
@@ -39,5 +39,5 @@ Vue.directive('drag-n-sort', {
     } else {
       setDragNsort();
     }
-  }
+  
 });

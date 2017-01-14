@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title></title>
     <link rel="stylesheet" href="font-awesome/css/font-awesome.css" media="screen" title="no title">
-    <link rel="stylesheet" href="style.css" media="screen" title="no title">
+    <link rel="stylesheet" href="css/style.css" media="screen" title="no title">
     <script src="autosize.js"></script>
     <script src="vue.js" charset="utf-8"></script>
   </head>
   <body>
-    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keyup="resetKeys" tabindex="0" v-if="appCategories" @click="resetData" autofocus>
+    <div class="container" id="app" @keydown="mainHandleKeyEvent" @keyup="resetKeys" tabindex="0"  @click="resetData" @dragover.prevent @drop="addDragApps" autofocus>
       <div class="password" v-if="isInputPass">
         <input type="password" placeholder="password" @focusout="toggleInputPass" @keydown.enter="enterEditMode" v-model="password" v-focus-on-display>
       </div>
@@ -18,8 +18,13 @@
       </div>
       <div class="top-nav">
         <div class="search-container">
-          <input type="text" name="name" placeholder="Find apps..." v-model="searchInput" @keypress="selectedCat = {}" @focus="getAllApps">
+          <input type="text" name="name" placeholder="Find apps..." v-model="searchInput" @keydown.stop @focus="getAllApps">
           <button class="icon-wrap"><i class="fa fa-search fa-2x" aria-hidden="true"></i></button>
+        </div>
+        <div class="view-mode">
+          <button class="small" v-bind:class="{'active-view':viewMode=='sml'}" @click="setView('sml',36,9)"><i class="fa fa-square" aria-hidden="true"></i></button>
+          <button class="medium" v-bind:class="{'active-view':viewMode=='med'}" @click="setView('med',24,8)"><i class="fa fa-square" aria-hidden="true"></i></button>
+          <button class="large" v-bind:class="{'active-view':viewMode==''}" @click="setView('',12,6)"><i class="fa fa-square fa-lg" aria-hidden="true"></i></button>
         </div>
       </div>
       <div class="mid-section unselectable" draggable="false">
@@ -27,52 +32,51 @@
           <div class="cat-container">
             <div class="cat-wrap">
               <ul class="categories" draggable="false" @drop="setCatIndex(catIndex,'reset')">
-                <li v-for="(category,index) in appCategories" @click="setCatIndex(index, $event)" v-bind:class="{'active': catIndex == index}" v-bind:draggable="isEdit"
-                v-drag-n-sort="{group:'categories',index:index,list:appCategories}" tabindex="1" @keydown="catHandleKeyEvent(appCategories,index,$event)" @keyup="resetKeys($event)" @focusout="updateCatName(category,$event)"><!---->
-                  {{category.categoryName}}
-                </li>
+
+                <my-category v-for="(category,index) in appCategories" v-drag-n-sort="{group:'categories',index:index,list:appCategories}" :category="category"
+                :cat-index="catIndex" :index="index" :is-edit="isEdit" v-on:cat-index-selected="setCatIndex" v-on:cat-delete="deleteCategory" >
+                </my-category>
+
               </ul>
             </div>
           </div>
         </div>
-        <div class="contents unselectable" draggable="false">
-          <div class="wrapper" v-bind:style="scrollStyle" v-for="(category,index) in appCategories" v-if="catIndex == index" draggable="false">
-            <div class="app-container" tabindex="-1" v-for="(app, index) in category.apps" v-bind:draggable="isEdit" @dblclick="openApp(app)" @click="setAppIndex(index,$event)"
-            v-drag-n-sort="{group:'apps',index:index, list:category.apps}" @keydown="appHandleKeyEvent(category.apps,index, $event)" @keyup="resetKeys" v-bind:class="{'focus':appIndex==index}">
-              <div class="img-container" draggable="false">
-                <img v-bind:src="app.imagePath" alt="" draggable="false">
-              </div>
-              <div class="app-name" draggable="false" v-show="!isEdit||!isEditAppName||appIndex != index">
-                <p draggable="false" @click.self="isEditAppName = isEdit ? true:false" @focus="setActive">
-                  {{app.appName}}
-                </p>
-              </div>
-              <textarea class="app-text" rows="1" v-model="app.appName" v-add-autosize v-if="isEdit&&isEditAppName&&appIndex == index" @keydown="appUpdateEnter" @focusout="updateAppName"></textarea>
-            </div>
+        <div class="contents unselectable" draggable="false" @mousewheel="mouseWheelEvent">
+          <div class="wrapper" v-bind:style="scrollStyle" v-for="(category,index) in appCategories" v-if="catIndex == index" draggable="false" >
+
+            <my-app v-for="(app, index) in category.apps" v-drag-n-sort="{group:'apps',index:index, list:category.apps}" :app="app" :index="index" :is-edit="isEdit"
+            v-bind:class="viewMode" :view-mode="viewMode" :app-index="appIndex" v-on:set-app-index="setAppIndex" v-on:open-app="openApp"></my-app>
+
           </div>
-          <div class="wrapper" v-bind:style="scrollStyle" v-if="searchInput" tabindex="-1" @>
-            <div class="app-container" tabindex="-1" v-for="(app,index) in filterSearch" @keydown="searchHandleKeyEvent(app, $event)"
-             @keyup="resetKeys" v-bind:class="{'focus':appIndex==index}" @click="setAppIndex(index,$event)" @dblclick="openApp(app)">
-              <div class="img-container">
-                <img v-bind:src="app.imagePath" alt="" />
-              </div>
-              <div class="app-name" draggable="false" v-show="!isEdit||!isEditAppName||appIndex != index">
-                <p @click.self="isEditAppName = isEdit ? true:false" @focus="setActive">
-                  {{app.appName}}
-                </p>
-              </div>
-              <textarea class="app-text" rows="1" v-add-autosize v-if="isEdit&&isEditAppName&&appIndex == index" @keydown="srchAppUpdate(app,$event)" @focusout="srchAppUpdate(app,$event)">{{app.appName}}</textarea>
-            </div>
+          <div class="wrapper" v-bind:style="scrollStyle" v-if="searchInput" tabindex="-1">
+
+            <search-apps v-for="(app,index) in searchApps" :app="app" :index="index" :app-categories="appCategories" :app-index="appIndex" :is-edit="isEdit"
+            v-bind:class="viewMode" :view-mode="viewMode" v-on:change-app-name="changeAppName" v-on:set-app-index="setAppIndex" v-on:open-app="openApp">
+            </search-apps>
+
           </div>
-          <div class="page-down" @click="pageDown" @dragenter="scrollDown" v-if="isShowPageDown"><i class="fa fa-angle-double-down fa-lg" aria-hidden="true"></i></div>
           <div class="page-up" @click="pageUp" @dragenter="scrollUp" v-if="isShowPageUp"><i class="fa fa-angle-double-up fa-lg" aria-hidden="true"></i></div>
+          <div class="page-down" @click="pageDown" @dragenter="scrollDown" v-if="isShowPageDown"><i class="fa fa-angle-double-down fa-lg" aria-hidden="true"></i></div>
         </div>
+        <button class="btn-announce" type="button" @click="showSetAnnounce" v-if="isEdit">announcement</button>
       </div>
-      <footer></footer>
+      <footer>
+        <div class="announce">
+          <transition name="slide">
+            <h3 v-show="isShowAnnounce" v-text="announcements.length ? announcements[announceIndex].text:''"></h3>
+          </transition>
+        </div>
+
+      </footer>
     </div>
 
     <script src="directives/dragNsort.js" charset="utf-8"></script>
     <script src="directives/focus-on-display.js" charset="utf-8"></script>
+    <script>
+    require("./components/category.js");
+    require("./components/my-app.js");
+    require('./components/search-apps.js');
+    </script>
     <script>require("./app.js")</script>
   </body>
 </html>

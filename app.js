@@ -1,18 +1,25 @@
+"use-strict";
 require("./directives/add-autosize.js")
 var _ = require('lodash');
 const {remote} = require('electron');
+const {ipcRenderer} = require('electron');
 const main = remote.require("./main.js");
 const storage = require('electron-json-storage');
+//let appData = require("./app-data.js");
+let catSound = new Audio("audio/click.wav");
+let appSound = new Audio("audio/app.wav");
+let openSound = new Audio("audio/open.mp3");
 let lastCatId = 0;
 let lastAppId = 0;
 let scrollDist = 400;
 let keys = [];
 let appsLength = 0;
+var timeout;
+
 let app = new Vue({
   el:'#app',
   data:{
     appCategories:null,
-    selectedCat :null,
     appIndex:null,
     catIndex:0,
     scrollStyle: {marginTop:"0px"},
@@ -21,15 +28,21 @@ let app = new Vue({
     searchApps:[],
     isInputPass: false,
     isEdit : false,
-    isEditAppName:false,
     isShowPageDown : false,
     isShowPageUp : false,
     pageNum : 1,
-    password:""
+    password:"",
+    viewMode:'',
+    pageItems:12,
+    rowItems:6,
+    announcements:[],
+    announceIndex:0,
+    isShowAnnounce:false
   },
   methods: {
     setCatIndex: function(index,res) {
       if(res=='reset' || this.catIndex !== index) {
+        console.log(index);
         this.catIndex = index;
         this.searchInput = '';
         this.allApps = [];
@@ -37,30 +50,47 @@ let app = new Vue({
         this.resetPage();
       }
       //this.editable(ev);
-      console.log(this.catIndex);
+      catSound.cloneNode(false).play();
+      //console.log(this.appCategories);
+    },
+
+    setView: function(vm, pgItems, rwItems) {
+      this.viewMode = vm;
+      this.pageItems = pgItems;
+      this.rowItems = rwItems;
+      this.resetPage();
+      //if(this.catIndex!==null) this.setCatIndex(this.catIndex,'reset');
+      if(vm = 'med')
+        scrollDist = 399;
+      else
+        scrollDist = 400;
     },
     setAppIndex : function(ind,ev) {
       this.appIndex = ind;
-      console.log(this.appIndex);
+      appSound.cloneNode(false).play();
       ev.stopPropagation();
     },
     pageUp: function() {
-      this.pageNum--;
-      this.isShowPageDown = true;
-      let val = parseInt(this.scrollStyle.marginTop);
-      console.count("page up");
-      this.scrollStyle.marginTop = (val + scrollDist)+"px";
-      if(this.pageNum == 1) this.isShowPageUp = false;
+      if(this.isShowPageUp) {
+        this.pageNum--;
+        this.isShowPageDown = true;
+        let val = parseInt(this.scrollStyle.marginTop);
+        console.count("page up");
+        this.scrollStyle.marginTop = (val + scrollDist)+"px";
+        if(this.pageNum == 1) this.isShowPageUp = false;
+      }
     },
     pageDown: function() {
-      this.pageNum++;
-      this.isShowPageUp = true;
-      let val = parseInt(this.scrollStyle.marginTop);
-      this.scrollStyle.marginTop = (val - scrollDist)+"px";
-      if((this.pageNum * 12) >= (appsLength)) {
-        this.isShowPageDown = false;
+      if(this.isShowPageDown) {
+        this.pageNum++;
+        this.isShowPageUp = true;
+        let val = parseInt(this.scrollStyle.marginTop);
+        this.scrollStyle.marginTop = (val - scrollDist)+"px";
+        if((this.pageNum * this.pageItems) >= (appsLength)) {
+          this.isShowPageDown = false;
+        }
+        console.log(this.scrollStyle.marginTop);
       }
-      //console.log(e);
     },
     scrollUp: _.throttle(function() {
       this.pageUp();
@@ -71,74 +101,31 @@ let app = new Vue({
     }, 1000, { 'trailing': false }),
 
     getAllApps : function() {
-      if(this.allApps.length === 0) {
-        let catLen = this.appCategories.length;
-        for(let y=0;y<catLen;y++) {
-          let appLen = this.appCategories[y].apps.length;
-          let copyAr = this.appCategories[y].apps.slice(0);
-          for(let x=0;x<appLen;x++) {
-            copyAr[x].catIndex = y;
-            copyAr[x].appIndex = x;
-          }
-          this.allApps = this.allApps.concat(copyAr);
+      this.allApps = [];
+      this.catIndex = null;
+      let catLen = this.appCategories.length;
+      for(let y=0;y<catLen;y++) {
+        let appLen = this.appCategories[y].apps.length;
+        let copyAr = this.appCategories[y].apps.slice(0);
+        for(let x=0;x<appLen;x++) {
+          copyAr[x].catIndex = y;
+          copyAr[x].appIndex = x;
         }
+        this.allApps = this.allApps.concat(copyAr);
       }
       //console.log(this.allApps);
     },
-    searchHandleKeyEvent: function(app, ev) {
-      keys[ev.keyCode] = true;
-      if(this.isEdit) {
-        if(keys[17]&&keys[46]) { //ctr+del delete
-          this.appCategories[app.catIndex].apps.splice(app.appIndex,1);
-          this.allApps = [];
-          this.getAllApps();
-          appsLength--;
-          keys = [];
-        }
-
-        if(keys[18]&&keys[73]) { //alt+i - change app icon
-          let self = this;
-          let file = document.createElement("INPUT");
-          file.setAttribute("type", "file");
-          file.setAttribute("accept","image/*");
-          file.click();
-          file.onchange = function(ev) {
-            self.appCategories[app.catIndex].apps[app.appIndex].imagePath = this.files[0].path;
-            self.allApps = [];
-            self.getAllApps();
-          }
-          keys = [];
-        }
-      }
-    },
     clearAllApps : function() {
       this.allApps=[];
-    },
-    appHandleKeyEvent: function(list, index, ev) {
-      keys[ev.keyCode] = true;
-      if(this.isEdit) {
-        if(keys[18]&&keys[73]) { //alt+i - change app icon
-          let file = document.createElement("INPUT");
-          file.setAttribute("type", "file");
-          file.setAttribute("accept","image/*");
-          file.click();
-          file.onchange = function(ev) {
-            list[index].imagePath = this.files[0].path;
-          }
-        }
-        if(keys[17]&&keys[46]) { //ctr+del delete app
-          list.splice(index,1);
-          appsLength--;
-          if((this.pageNum * 12) >= (appsLength)) {
-            this.isShowPageDown = false;
-          }
-        }
-      }
     },
     resetKeys: function(ev) {
       keys[ev.keyCode] = false;
       keys.splice(0);
       //console.log("keyup");
+    },
+    resetAllApps: function() {
+      //this.clearAllApps();
+      this.getAllApps();
     },
     openFileDialog : function() {
       let self = this;
@@ -167,29 +154,42 @@ let app = new Vue({
           self.appCategories[self.catIndex].apps.unshift(app);
         }
         appsLength = self.appCategories[self.catIndex].apps.length;
-        if(appsLength > self.pageNum*12) {
+        if(appsLength > self.pageNum*this.pageItems) {
           self.isShowPageDown = true;
         }
         console.log(files);
       }
     },
-    catHandleKeyEvent: function(list, index, ev) {
-      keys[ev.keyCode] = true;
-      if(this.isEdit) {
-        if(keys[17]&&keys[46]) { //ctr+del - delete category
-          list.splice(index,1);
-
-          keys.splice(0);
-        }
-        if(ev.keyCode == 13) {
-          ev.preventDefault();
-          list[index].categoryName = ev.currentTarget.innerText;
-          ev.target.setAttribute("contenteditable", "false");
-          //ev.currentTarget.parentNode.parentNode.focus();
-          keys.splice(0);
-        }
+    deleteCategory: function() {
+      this.appCategories.splice(this.catIndex,1);
+    },
+    moveCatIndex: function(move) {
+      if(move>0) {
+        if(this.catIndex < (this.appCategories.length-1))
+          this.setCatIndex(this.catIndex+move);
+      } else if(move<0) {
+        if(this.catIndex>0) this.setCatIndex(this.catIndex + move);
       }
-      //console.log(keys);
+    },
+    moveAppIndex: function(move) {
+      if(move<0) {
+        if((this.appIndex+move) >= 0 ) {
+          this.appIndex += move;
+        } else {
+          this.appIndex = 0;
+        }
+        if(this.appIndex < ((this.pageNum*this.pageItems)-this.pageItems)) {
+          this.pageUp();
+        }
+      } else if(move>0) {
+        if((this.appIndex+move) < appsLength)
+          this.appIndex += move;
+        else
+          this.appIndex = appsLength - 1;
+        if(this.appIndex > ((this.pageNum*this.pageItems)-1))
+          this.pageDown();
+      }
+      appSound.cloneNode(false).play();
     },
     mainHandleKeyEvent: function(ev) {
       keys[ev.keyCode] = true;
@@ -198,15 +198,63 @@ let app = new Vue({
           storage.set('app-launcher-data', {
             categories:this.appCategories,
             lastAppId:lastAppId,
-            lastCatId:lastCatId
+            lastCatId:lastCatId,
+            announcements:this.announcements
           },
           function(error) {
             if (error)
-              alert(error);
+              ipcRenderer.send("open-error-dialog",error);
             else {
-              alert("Changes is successfully save!")
+              ipcRenderer.send("open-information-dialog","Changes is successfully save!",['Ok']);
+              //alert("Changes is successfully save!")
             }
           });
+          keys = [];
+        }
+        if(this.appIndex!==null) {
+          if(keys[18]&&keys[73]) { //alt+i - change app icon
+            let self = this;
+            let file = document.createElement("INPUT");
+            file.setAttribute("type", "file");
+            file.setAttribute("accept","image/*");
+            file.click();
+            file.onchange = function(ev) {
+              if(self.catIndex===null && self.searchApps.length) {
+                let searchApp = self.searchApps[self.appIndex];
+                if(self.viewMode=="sml") {
+                  //self.appCategories[searchApp.catIndex].apps[searchApp.appIndex].iconPath = this.files[0].path;
+                  searchApp.iconPath = this.files[0].path;
+                } else {
+                  //self.appCategories[searchApp.catIndex].apps[searchApp.appIndex].imagePath = this.files[0].path;
+                  searchApp.imagePath = this.files[0].path;
+                }
+                //searchApp.imagePath = this.files[0].path;
+              } else {
+                if(self.viewMode=="sml")
+                  self.appCategories[self.catIndex].apps[self.appIndex].iconPath = this.files[0].path;
+                else
+                  self.appCategories[self.catIndex].apps[self.appIndex].imagePath = this.files[0].path;
+              }
+              document.getElementById('app').click();
+            }
+            keys = [];
+          }
+        }
+        if(keys[17]&&keys[46]) { //ctr+del delete
+          if(this.appIndex!==null) {
+            if(this.catIndex===null && this.searchApps.length) {
+              let searchApp = this.searchApps[this.appIndex];
+              this.deleteApp(searchApp.catIndex,searchApp.appIndex);
+              this.getAllApps();
+              this.searchApps.splice(this.appIndex,1);
+            } else {
+              this.deleteApp(this.catIndex,this.appIndex);
+            }
+          } else if(this.catIndex!==null){
+            let msg = 'Warning! Deleting "'+this.appCategories[this.catIndex].categoryName+'" will delete all application inside this category. Are you sure you want to delete this category?';
+            ipcRenderer.send('open-information-dialog', msg,["No","Yes"],"warning");
+            //this.appCategories.splice(this.catIndex,1);
+          }
           keys = [];
         }
 
@@ -233,7 +281,8 @@ let app = new Vue({
       if(keys[17]&&keys[16]&&keys[69]) { //ctrl+shift+e
         if(this.isEdit) {
           this.isEdit = !this.isEdit; //toggle edit mode
-          alert("Edit Mode deactivated!");
+          ipcRenderer.send("open-information-dialog","Edit Mode deactivated!",['Ok']);
+          //alert("Edit Mode deactivated!");
         } else {
           this.toggleInputPass(); //toggle show password
         }
@@ -241,44 +290,36 @@ let app = new Vue({
       }
       if(this.appIndex!==null) {
         if(ev.keyCode==37) { //arrow left
-          if(this.appIndex>0) {
-            this.appIndex--;
-            if(this.appIndex < ((this.pageNum*12)-12)) {
-              this.pageUp();
-            }
-          } else {
+          if(this.appIndex===0) {
             this.appIndex = null;
+            document.getElementById('app').focus();
             if(this.catIndex==null) {
               this.setCatIndex(0);
             }
-          }
+          } else
+            this.moveAppIndex(-1);
         } else if (ev.keyCode==39) {//arrow right
-          //console.log(appsLength);
-          if(this.appIndex < (appsLength-1)) {
-            this.appIndex++;
-            if(this.appIndex > ((this.pageNum*12)-1)) {
-              this.pageDown();
-            }
-          }
+          this.moveAppIndex(1);
         } else if (ev.keyCode==40) {//arrow down
-          if((this.appIndex+6) < appsLength)
-            this.appIndex += 6;
-          else
-            this.appIndex = appsLength - 1;
-          if(this.appIndex > ((this.pageNum*12)-1))
-            this.pageDown();
+          this.moveAppIndex(this.rowItems);
         } else if (ev.keyCode==38) {//arrow up
-          if(this.appIndex-6>=0)
-            this.appIndex -= 6;
-          else
-            this.appIndex = 0;
-          if(this.appIndex < ((this.pageNum*12)-12))
-            this.pageUp();
-        } else if (ev.keyCode==13) {
+          this.moveAppIndex(-this.rowItems);
+        } else if (ev.keyCode==13) {// key enter
           if(this.catIndex !== null) {
-            main.openFile(this.appCategories[this.catIndex].apps[this.appIndex].appPath) || alert("Cannot open file!");
+            /*if(main.openFile(this.appCategories[this.catIndex].apps[this.appIndex].appPath))
+              openSound.play();
+            else
+              ipcRenderer.send("open-error-dialog","Cannot open file!");*/
+            this.openApp(this.appCategories[this.catIndex].apps[this.appIndex]);
           } else {
-            if(this.searchApps[this.appIndex]) main.openFile(this.searchApps[this.appIndex].appPath) || alert("Cannot open file!");
+            if(this.searchApps[this.appIndex]) {
+              /*if(main.openFile(this.searchApps[this.appIndex].appPath))
+                openSound.play();
+              else
+                ipcRenderer.send("open-error-dialog","Cannot open file!");
+                //alert("Cannot open file!");*/
+              this.openApp(this.searchApps[this.appIndex]);
+            }
           }
         }
         ev.stopPropagation();
@@ -288,21 +329,24 @@ let app = new Vue({
             this.appIndex = 0;
           else
             this.appIndex = this.appCategories[this.catIndex].apps.length ? 0 : null;
-        } else if (ev.keyCode==40) {
-          if(this.catIndex < (this.appCategories.length-1)) {
-            let ind = this.catIndex + 1;
-            this.setCatIndex(ind);
-          }
-        } else if (ev.keyCode==38) {
-          if(this.catIndex > 0) {
-            this.setCatIndex(this.catIndex-1);
-          }
+        } else if (ev.keyCode==40) {//arrow down
+          this.moveCatIndex(1)
+        } else if (ev.keyCode==38) {//arrow up
+          this.moveCatIndex(-1);
         }
         ev.stopPropagation();
       }
-      setTimeout(function() {
+      /*setTimeout(function() {
         keys = [];
-      },500);
+      },500);*/
+    },
+    mouseWheelEvent: function(ev) {
+      console.log(ev);
+      if(ev.deltaY>0) {
+        this.pageDown();
+      } else {
+        this.pageUp();
+      }
     },
     toggleInputPass : function() {
       this.isInputPass = !this.isInputPass;
@@ -311,104 +355,122 @@ let app = new Vue({
     enterEditMode: function(ev) {
       let pass = localStorage.getItem("password");
       if (pass === this.password) {
-        alert("Edit Mode Activated!");
+        ipcRenderer.send("open-information-dialog","Edit Mode Activated!",["Ok"]);
         this.isEdit = true;
-      } else {
-        alert("Incorrect password")
+      } else if(pass !== null) {
+        ipcRenderer.send("open-information-dialog","Incorrect password",["Ok"]);
         this.toggleInputPass();
-      }
-      ev.stopPropagation();
-    },
-    updateAppName: function() {
-      if (this.searchInput) { //update app from search
-        //this.appCategories[app.catIndex].apps[app.appIndex].appName = ev.currentTarget.innerText;
-        this.allApps = [];
-        this.getAllApps();
-        this.isEditAppName = false;
       } else {
-        this.isEditAppName = false;
-      }
-      console.log("updateApp");
-    },
-    appUpdateEnter: function(ev) {
-      if(ev.keyCode==13) {
-        this.isEditAppName = false;
+        ipcRenderer.send("open-information-dialog","No password is set! Edit Mode Activated!",["Ok"]);
+        this.isEdit = true;
       }
       ev.stopPropagation();
     },
-    updateCatName: function(cat,ev) {
-      let name = ev.currentTarget.innerText
-      if(name)
-        cat.categoryName = name;
-      else
-        ev.currentTarget.innerText = cat.categoryName;
-      ev.target.setAttribute("contenteditable", "false");
-      console.log(cat.categoryName);
+    changeAppName: function(name,catIndex,appIndex) {
+      this.appCategories[catIndex].apps[appIndex].appName = name;
     },
-    srchAppUpdate: function(app,ev) {
-      if(ev.type=="focusout") {
-        app.appName = ev.target.value;
-        this.isEditAppName = false;
-      } else if(ev.keyCode==13) {
-        app.appName = ev.target.value;
-        this.isEditAppName = false;
+    deleteApp: function(catIndex, appIndex) {
+      this.appCategories[catIndex].apps.splice(appIndex,1);
+      appsLength--;
+      if(appsLength<(appIndex+1)) {
+        this.appIndex = null;
       }
-      ev.stopPropagation();
-    },
-    setActive: function(ev) {
-      //ev.currentTarget.parentNode.setAttribute("class", "app-name edit");
+      if((this.pageNum * this.pageItems) >= (appsLength)) {
+        this.isShowPageDown = false;
+      }
     },
     resetData: function() {
       this.appIndex = null;
       this.isEditAppName = false;
     },
-    blurOnEnter: function(app,ev) {
-      if(ev.keyCode == 13) {
-        ev.preventDefault();
-        app.appName = ev.currentTarget.innerText;
-        ev.target.setAttribute("contenteditable", "false");
-        //ev.currentTarget.parentNode.parentNode.focus();
-      }
-    },
-    editable: function(ev) {
-      if(this.isEdit) {
-        ev.target.setAttribute("contenteditable", "true");
-        ev.target.focus();
-      }
-    },
     openApp: function(app) {
-      main.openFile(app.appPath) || alert("Cannot open file!");
+      main.openFile(app.appPath) ? openSound.play() : ipcRenderer.send("open-error-dialog","Cannot open file!");//alert("Cannot open file!");
+    },
+    addDragApps: function(ev) {
+      ev.preventDefault();
+      if(this.isEdit) {
+        let files = ev.dataTransfer.files;
+        let l = files.length;
+        for(let i=0; i<l; i++) {
+          let name = files[i].name;
+          let index = name.lastIndexOf(".");
+          if(index !== -1) {
+            name = files[i].name.slice(0, index);
+          }
+          lastAppId++;
+          let app = {
+            imagePath:"images/default.png",
+            appName:name,
+            appPath:files[i].path,
+            id:lastAppId
+          };
+          this.appCategories[this.catIndex].apps.unshift(app);
+        }
+        appsLength = this.appCategories[this.catIndex].apps.length;
+        if(appsLength > this.pageNum*this.pageItems) {
+          this.isShowPageDown = true;
+        }
+      }
     },
     resetPage: function() {
       this.scrollStyle = {marginTop:"0px"};
       this.pageNum = 1;
       this.isShowPageUp = false;
       this.appIndex = null;
-      if((this.pageNum * 12) >= (appsLength)) {
+      if((this.pageNum * this.pageItems) >= (appsLength)) {
         this.isShowPageDown = false;
       } else {
         this.isShowPageDown = true;
       }
-    }
-  },
-  computed : {
-    filterSearch: function() {
-      this.catIndex = null;
-      let allApps = this.allApps;
-      this.searchApps = [];
-      let l = allApps.length;
-      for(let i=0;i<l;i++) {
-        if(allApps[i].appName.toLowerCase().search(this.searchInput.toLowerCase()) !== -1) {
-          this.searchApps.push(allApps[i]);
+      console.log(appsLength);
+    },
+    showSetAnnounce: function() {
+      ipcRenderer.send('show-set-announce', this.announcements);
+    },
+    cycleAnnounce : function() {
+      if(this.announcements.length>0) {
+        if(this.isShowAnnounce) {
+          this.isShowAnnounce = false;
+          timeout = setTimeout(this.cycleAnnounce, 3000);
+        } else {
+          this.isShowAnnounce = true;
+          timeout = setTimeout(this.cycleAnnounce, 7000);
+          if( (this.announceIndex+1) === this.announcements.length)
+            this.announceIndex = 0;
+          else
+            this.announceIndex++;
         }
       }
-      appsLength = this.searchApps.length;
-      this.resetPage();
-      return this.searchApps;
     }
+  },
+  watch : {
+    searchInput: function() {
+      //this.catIndex = null;
+      let allApps = this.allApps;
+      this.searchApps.splice(0);
+      let l = allApps.length;
+      if(this.searchInput) {
+        for(let i=0;i<l;i++) {
+          if(allApps[i].appName.toLowerCase().search(this.searchInput.toLowerCase()) !== -1) {
+            this.searchApps.push(allApps[i]);
+          }
+        }
+      }
+      if(this.catIndex===null) { // if no category selected
+        appsLength = this.searchApps.length;
+        this.resetPage();
+        console.log(appsLength);
+        console.log('reset');
+      }
+      //return this.searchApps;
+    }
+  },
+  created : function() {
+    var self = this;
+    setTimeout(this.cycleAnnounce, 2000);
   }
 });
-storage.get('app-launcher-data', function(er, data) {
+/*storage.get('app-launcher-data', function(er, data) {
   if(er)
     alert(er) ;
   else {
@@ -421,7 +483,7 @@ storage.get('app-launcher-data', function(er, data) {
               appName: "Lorem ipsum dolor sit amet, consectetua",
               appPath:"",
             }*/
-        },
+        /*},
         { categoryName:"Online games",apps:[],id:2 },
         { categoryName:"Offline games",apps:[],id:3 },
         { categoryName:"Internet apps",apps:[],id:4 },
@@ -432,19 +494,44 @@ storage.get('app-launcher-data', function(er, data) {
       lastCatId = 6;
     } else {
       app.appCategories = data.categories;
+      app.announcements = data.announcements||[];
       lastAppId = data.lastAppId;
       lastCatId = data.lastCatId;
     }
     //app.selectedCat = app.appCategories[0];
-    if(app.appCategories.length) {
+    if(app.appCategories.length) {//determine isShowPageDown;
       appsLength = app.appCategories[0].apps.length;
-      if(app.appCategories[0].apps.length > 12) {
+      if(app.appCategories[0].apps.length > app.pageItems) {
         app.isShowPageDown = true;
       }
     }
   }
+});*/
+ipcRenderer.on('apply-announcements',(event,arg) => {
+  clearTimeout(timeout);
+  app.announcements = arg;
+  app.isShowAnnounce = true;
+  app.cycleAnnounce();
+  console.log(app.announcements);
 });
-
+ipcRenderer.on('send-app-data',(event,data) => {
+  console.log(data);
+  app.appCategories = data.categories;
+  app.announcements = data.announcements||[];
+  lastAppId = data.lastAppId;
+  lastCatId = data.lastCatId;
+  if(app.appCategories.length) {//determine isShowPageDown;
+    appsLength = app.appCategories[0].apps.length;
+    if(app.appCategories[0].apps.length > app.pageItems) {
+      app.isShowPageDown = true;
+    }
+  }
+});
+ipcRenderer.on('information-dialog-selection', function (event, index) {
+  if(index === 1)
+    app.appCategories.splice(app.catIndex,1);
+  document.getElementById('app').focus();
+})
 //document.onkeydown = function(ev) {
   //ev.preventDefault();
 //}

@@ -1,19 +1,22 @@
 {
   "name": "app-launcher",
   "version": "1.0.0",
+  "productName": "mikeale-app-launcher",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": ""
+    "build": "electron-packager  --platform=win32 --arch=x64 ./ app-launcher --overwrite",
+    "package-win": "electron-packager  --platform=win32 --arch=x64 ./ app-launcher --overwrite --icon=app.ico --prune=true --out=release-builds --version-string.CompanyName=mikeale --version-string.FileDescription=mikeale --version-string.ProductName=\"Mikeale Apps\"",
+    "sass": "node-sass -o css scss/style.scss -w",
+    "asar-pack": "asar pack app app.asar --unpack-dir '{images,audio}'"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron-json-storage": "^2.1.0",
-    "icon-extractor": "^1.0.3",
-    "lodash": "^4.17.2",
-    "sortablejs": "^1.5.0-rc1",
     "basic-autosize-textarea": "^0.7",
-    "webcomponents.js": "^0.7.23"
+    "electron-json-storage": "^2.1.0",
+    "electron-packager": "^8.3.0",
+    "electron-prebuilt": "^1.4.10",
+    "lodash": "^4.17.2"
   }
 }

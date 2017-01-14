@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>set password</title>
+    <style media="screen">
+      body, .container {
+        background: #595f68;
+        font-family: Arial;
+      }
+      .container {
+        text-align: center;
+      }
+      header {
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 10px 0;
+      }
+      section {
+        margin-top: 20px;
+      }
+      input {
+        display: block;
+        margin: 0 auto;
+        border: none;
+        text-decoration: none;
+        padding: 10px;
+      }
+      input:focus {
+        outline-color: green;
+      }
+      button {
+        width: 60px;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        text-decoration:none;
+        color: white;
+
+        background-color: rgba(0, 0, 0, 0.6);
+      }
+      .clearfix {
+        overflow: auto;
+      }
+      .announce-container {
+        display: inline-block;
+      }
+      .wrap {
+        width: 400px;
+        margin: 0 auto;
+        text-align: center;
+        position: relative;
+        border: 1px solid;
+      }
+      .wrap input{
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .wrap #delete {
+          position: absolute;
+          margin: 0px;
+          right: 0px;
+          top:0px;
+          color: black;
+          background-color: rgba(0,0,0,0);
+          width: 30px;
+          visibility: hidden;
+      }
+      .wrap:hover #delete {
+        visibility: visible;
+      }
+      .button-wrap {
+        margin-top: 30px;
+      }
+      #add {
+        color: white;
+        background-color: rgba(0,0,0,0);
+        float: right;
+      }
+      #cancel {
+        float: left;
+        margin: 0px
+      }
+      #ok {
+        float: right;
+        margin: 0px;
+      }
+
+    </style>
+    <script src="vue.js" charset="utf-8"></script>
+    <script src="app-data.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h3>Set Announcement</h3>
+      </header>
+      <section id="app2">
+        <div class="announce-container">
+          <div class="wrap" v-for="(announce,index) in announcements">
+            <input  v-model="announce.text">
+            <button id="delete" name="button" @click="remove(index)">&#10060;</button>
+          </div>
+          <!--<div class="clearfix">
+            <button id="add" name="button" > &#10010;add</button>
+          </div>-->
+          <div class="button-wrap">
+            <button type="button" @click="apply">Apply</button>
+            <button type="button" @click="add">Add</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script type="text/javascript">
+      const {ipcRenderer} = require('electron');
+      //let app = require("./app-data.js");
+      //let appData = new app();
+      //console.log(app.scrollDist);
+      let app2 = new Vue({
+        el:'#app2',
+        data:{
+          announcements:[]
+        },
+        methods: {
+          add: function() {
+            this.announcements.push({text:""});
+          },
+          apply: function() {
+            ipcRenderer.send('apply-announcements',this.announcements);
+          },
+          remove: function(index) {
+            this.announcements.splice(index,1);
+          }
+        }
+
+      });
+      ipcRenderer.on('send-announcements', (event,arg) => {
+        app2.announcements = arg;
+      });
+
+    </script>
+  </body>
+
+</html>
