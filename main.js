@@ -1,9 +1,15 @@
 const electron = require('electron');
+const fs = require('fs');
 const {app, BrowserWindow} = electron;
 const {shell} = electron;
 const {ipcMain} = require('electron');
 const storage = require('electron-json-storage');
 const dialog = require('electron').dialog;
+
+app.on('window-all-closed', function() {
+  if (process.platform != 'darwin')
+    app.quit();
+});
 
 app.on("ready",()=>{
   let win = new BrowserWindow({
@@ -19,7 +25,17 @@ app.on("ready",()=>{
   });
 
   //win.setMenu(null);
-  win.loadURL("file://" + __dirname + "/index.html");
+  let fileBuffer = null;
+  try {
+    fileBuffer = fs.readFileSync('C:/Program Files/kigs.txt');
+  } catch (e) {
+    dialog.showErrorBox('Error!','You are not authorized to run this app!');
+    app.quit();
+  }
+
+  if(fileBuffer)
+    win.loadURL("file://" + __dirname + "/index.html");
+
   win.once('ready-to-show', () => {
     win.show();
     sendAppData(win);
@@ -105,7 +121,7 @@ app.on("ready",()=>{
 
 function sendAppData(win) {
   let appData;
-  storage.get('app-launcher-data', function(er, data) {
+  /*storage.get('app-launcher-data', function(er, data) {
     if(er)
       console.log(er) ;
     else {
@@ -119,7 +135,7 @@ function sendAppData(win) {
                   appName: "Lorem ipsum dolor sit amet, consectetua",
                   appPath:"",
                 }*/
-            },
+            /*},
             { categoryName:"Online games",apps:[],id:2 },
             { categoryName:"Offline games",apps:[],id:3 },
             { categoryName:"Internet apps",apps:[],id:4 },
@@ -134,5 +150,35 @@ function sendAppData(win) {
       else appData = data;
       win.webContents.send('send-app-data',appData);
     }
+  });*/
+  let path = app.getPath('exe');
+  path += "/../";
+  fs.stat( path + 'config.json', function(err, stat) {
+    if(err === null) {
+      fs.readFile(path+'config.json', function (err, data) {
+         if (err) {
+            dialog.showErrorBox('Error!',"Error in config!");
+         }
+         appData = JSON.parse(data.toString());
+         win.webContents.send('send-app-data',path,appData);
+      });
+    } else if(err.code == 'ENOENT') {
+      appData = {
+        categories: [
+          { categoryName:"Favorite apps", apps:[], id:1},
+          { categoryName:"Online games",apps:[],id:2 },
+          { categoryName:"Offline games",apps:[],id:3 },
+          { categoryName:"Internet apps",apps:[],id:4 },
+          { categoryName:"Office apps",apps:[],id:5 },
+          { categoryName:"Movies",apps:[],id:6 }
+        ],
+        lastAppId : 0,
+        lastCatId : 6,
+        announcements:[]
+      }
+    } else {
+        dialog.showErrorBox('Error!',"Error in config!");
+    }
+    win.webContents.send('send-app-data',path,appData);
   });
 }

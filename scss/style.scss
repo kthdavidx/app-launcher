@@ -1,5 +1,5 @@
 $font-stack: Arial;
-$back-image: url("../images/dark.jpg");
+$back-image: url("../images/background.jpg");
 $nav-back: rgba(0, 0, 0, 0.5);
 
 html * {
@@ -31,7 +31,7 @@ body {
 .top {
   width: 100%;
   height: 50px;
-  background: $nav-back;
+  /*background: $nav-back;*/
 }
 .top-nav{
   padding: 15px 25px 0 25px;

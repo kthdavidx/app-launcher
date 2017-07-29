@@ -1,19 +1,19 @@
 "use-strict";
-require("./directives/add-autosize.js")
+require("./directives/add-autosize.js");
 var _ = require('lodash');
 const {remote} = require('electron');
 const {ipcRenderer} = require('electron');
 const main = remote.require("./main.js");
 const storage = require('electron-json-storage');
-//let appData = require("./app-data.js");
+const fs = require('fs');
 let catSound = new Audio("audio/click.wav");
 let appSound = new Audio("audio/app.wav");
-let openSound = new Audio("audio/open.mp3");
 let lastCatId = 0;
 let lastAppId = 0;
 let scrollDist = 400;
 let keys = [];
 let appsLength = 0;
+let path = null;
 var timeout;
 
 let app = new Vue({
@@ -195,7 +195,7 @@ let app = new Vue({
       keys[ev.keyCode] = true;
       if(this.isEdit) {
         if(keys[17]&&keys[83]) { //ctrl+s - save data
-          storage.set('app-launcher-data', {
+          /*(storage.set('app-launcher-data', {
             categories:this.appCategories,
             lastAppId:lastAppId,
             lastCatId:lastCatId,
@@ -208,6 +208,20 @@ let app = new Vue({
               ipcRenderer.send("open-information-dialog","Changes is successfully save!",['Ok']);
               //alert("Changes is successfully save!")
             }
+          });*/
+          let config = {
+            categories:this.appCategories,
+            lastAppId:lastAppId,
+            lastCatId:lastCatId,
+            announcements:this.announcements
+          }
+          console.log(path);
+          fs.writeFile(path+'config.json', JSON.stringify(config),  function(err) {
+           if (err) {
+             ipcRenderer.send("open-error-dialog",err);
+           } else {
+            ipcRenderer.send("open-information-dialog","Changes is successfully save!",['Ok']);
+           }
           });
           keys = [];
         }
@@ -384,7 +398,7 @@ let app = new Vue({
       this.isEditAppName = false;
     },
     openApp: function(app) {
-      main.openFile(app.appPath) ? openSound.play() : ipcRenderer.send("open-error-dialog","Cannot open file!");//alert("Cannot open file!");
+      main.openFile(app.appPath) || ipcRenderer.send("open-error-dialog","Cannot open file!");//alert("Cannot open file!");
     },
     addDragApps: function(ev) {
       ev.preventDefault();
@@ -514,7 +528,7 @@ ipcRenderer.on('apply-announcements',(event,arg) => {
   app.cycleAnnounce();
   console.log(app.announcements);
 });
-ipcRenderer.on('send-app-data',(event,data) => {
+ipcRenderer.on('send-app-data',(event,pth,data) => {
   console.log(data);
   app.appCategories = data.categories;
   app.announcements = data.announcements||[];
@@ -526,6 +540,8 @@ ipcRenderer.on('send-app-data',(event,data) => {
       app.isShowPageDown = true;
     }
   }
+  path = pth;
+  console.log(path);
 });
 ipcRenderer.on('information-dialog-selection', function (event, index) {
   if(index === 1)
